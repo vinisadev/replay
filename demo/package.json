@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@nuxtjs/tailwindcss": "^6.12.2",
-    "@vinisadev/replay-sdk": "^1.0.0",
+    "@vinisadev/replay-sdk": "^1.1.0",
     "nuxt": "^3.13.2",
     "vue": "latest",
     "vue-router": "latest"

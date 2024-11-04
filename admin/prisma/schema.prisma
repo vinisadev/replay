@@ -27,9 +27,10 @@ model Event {
   id        String   @id @default(uuid())
   sessionId String
   type      String
-  data      Json
+  data      Json @db.JsonB // Using JsonB for better performance with large DOM snapshots
   timestamp DateTime @default(now())
   session   Session  @relation(fields: [sessionId], references: [id])
 
   @@index([sessionId])
+  @@index([type])
 }

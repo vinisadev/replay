@@ -1383,10 +1383,10 @@
     node-gyp-build "^4.2.2"
     resolve-from "^5.0.0"
 
-"@vinisadev/replay-sdk@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@vinisadev/replay-sdk/-/replay-sdk-1.0.0.tgz#5aded23e0523782d872d96614b2e4548a48a82d4"
-  integrity sha512-FNP+V5iV7VViEZgkYjMVFgHu5p7uSwPMyw5GnDDVrCgM2vA+G+q9FwpVj/vLOPBOTZOXAx9gmjNzluIv3Vq0zw==
+"@vinisadev/replay-sdk@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@vinisadev/replay-sdk/-/replay-sdk-1.1.0.tgz#be84c55b47aa0f63ffa444a132fb8704203e30f6"
+  integrity sha512-rronP9RfRPp5rlFzp7ne4CTnZrY4IGJiT+0kuHSwl/O6K9/8QHDPwJcEpukd4Qdc3LPDIXrT2QCXhZPWyBDMNQ==
 
 "@vitejs/plugin-vue-jsx@^4.0.1":
   version "4.0.1"
@@ -4691,9 +4691,6 @@ replace-in-file@^6.1.0:
     chalk "^4.1.2"
     glob "^7.2.0"
     yargs "^17.2.1"
-
-replay-sdk@../../replay-sdk:
-  version "1.0.0"
 
 require-directory@^2.1.1:
   version "2.1.1"

@@ -2,6 +2,10 @@
 import { formatDistanceToNow, format } from 'date-fns'
 import type { ReplayEvent, PlaybackState, MousePosition, ScrollPosition } from '~/types/replay'
 
+const replayFrame = ref<HTMLIFrameElement | null>(null)
+const currentSnapshot = ref<string>('')
+const currentDOMSnapshot = ref<any>(null)
+
 // Get session ID from route
 const route = useRoute()
 const sessionId = route.params.id as string
@@ -88,20 +92,88 @@ const startPlayback = () => {
   requestAnimationFrame(animate)
 }
 
+// Initialize iframe content when a DOM snapshot is encountered
+const initializeReplayFrame = (html: string) => {
+  if (!replayFrame.value) return
+
+  const frameDoc = replayFrame.value.contentDocument
+  if (!frameDoc) return
+
+  // Write the captured HTML to the iframe
+  frameDoc.open()
+  frameDoc.write(html)
+  frameDoc.close()
+
+  // Add custom styles for cursor visualization
+  const style = frameDoc.createElement('style')
+  style.textContent = `
+    .replay-cursor {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: red;
+      border-radius: 50%;
+      pointer-events: none;
+      transition: all 0.1s ease;
+      z-index: 999999;
+    }
+
+    .replay-click {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid red;
+      animation: click-effect 0.5s ease-out;
+      pointer-events: none;
+      z-index: 999999;
+    }
+
+    @keyframes click-effect {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+  `
+
+  frameDoc.head.appendChild(style)
+}
+
 const applyEvents = (events: ReplayEvent[]) => {
+  if (!replayFrame.value) return
+
+  const frameDoc = replayFrame.value.contentDocument
+  if (!frameDoc) return
+
   // Apply the latest mouse and scroll positions from the events
   events.forEach(event => {
     switch (event.type) {
-      case 'mouseMove':
-        cursorPosition.value = {
-          x: event.data.x,
-          y: event.data.y
-        }
+      case 'domSnapshot':
+        currentDOMSnapshot.value = event.data
+        initializeReplayFrame(event.data.html)
         break
+
+      case 'mouseMove':
+        let cursor = frameDoc.querySelector('.replay-cursor')
+        if (!cursor) {
+          cursor = frameDoc.createElement('div')
+          cursor.className = 'replay-cursor'
+          frameDoc.body.appendChild(cursor)
+        }
+        cursor.style.transform = `translate(${event.data.x}px, ${event.data.y}px)`
+        break
+
+      case 'click':
+        const clickEffect = frameDoc.createElement('div')
+        clickEffect.className = 'replay-click'
+        clickEffect.style.left = `${event.data.x}px`
+        clickEffect.style.top = `${event.data.y}px`
+        frameDoc.body.appendChild(clickEffect)
+        setTimeout(() => clickEffect.remove(), 500)
+        break
+
       case 'scroll':
-        scrollPosition.value = {
-          x: event.data.scrollX,
-          y: event.data.scrollY
+        if (frameDoc.defaultView) {
+          frameDoc.defaultView.scrollTo(event.data.scrollX, event.data.scrollY)
         }
         break
     }
@@ -147,17 +219,17 @@ const setSpeed = (speed: number) => {
     <div class="relative bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg">
       <!-- Replay canvas -->
       <div class="aspect-video relative overflow-hidden">
-        <!-- Cursor indicator -->
-        <div
-          class="absolute w-4 h-4 pointer-events-none"
+
+        <!-- Replay iFrame -->
+        <iframe
+          ref="replayFrame"
+          class="w-full h-full"
+          sandbox="allow-same-origin"
           :style="{
-            left: `${cursorPosition.x}px`,
-            top: `${cursorPosition.y}px`,
-            transform: 'translate(-50%, -50%)'
+            pointerEvents: 'none',
+            backgroundColor: 'white'
           }"
-        >
-          <div class="w-4 h-4 rounded-full bg-red-500 opacity-50"></div>
-        </div>
+        ></iframe>
       </div>
 
       <!-- Playback controls -->
