@@ -5,6 +5,7 @@ import type { ReplayEvent, PlaybackState, MousePosition, ScrollPosition } from '
 const replayFrame = ref<HTMLIFrameElement | null>(null)
 const currentSnapshot = ref<string>('')
 const currentDOMSnapshot = ref<any>(null)
+const cursor = ref<HTMLDivElement | null>(null)
 
 // Get session ID from route
 const route = useRoute()
@@ -104,76 +105,97 @@ const initializeReplayFrame = (html: string) => {
   frameDoc.write(html)
   frameDoc.close()
 
-  // Add custom styles for cursor visualization
-  const style = frameDoc.createElement('style')
-  style.textContent = `
-    .replay-cursor {
-      position: fixed;
-      width: 10px;
-      height: 10px;
-      background: red;
-      border-radius: 50%;
-      pointer-events: none;
-      transition: all 0.1s ease;
-      z-index: 999999;
+  // Wait for iframe to load
+  setTimeout(() => {
+    if (!frameDoc) return
+
+    // Add cursor element if it doesn't exist
+    if (!frameDoc.querySelector('.replay-cursor')) {
+      const cursorEl = frameDoc.createElement('div')
+      cursorEl.className = 'replay-cursor'
+      frameDoc.body.appendChild(cursorEl)
     }
 
-    .replay-click {
-      position: fixed;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid red;
-      animation: click-effect 0.5s ease-out;
-      pointer-events: none;
-      z-index: 999999;
-    }
+    // Add custom styles for cursor visualization
+    const style = frameDoc.createElement('style')
+    style.textContent = `
+      .replay-cursor {
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        background: red;
+        border-radius: 50%;
+        pointer-events: none;
+        transition: all 0.1s ease;
+        z-index: 999999;
+      }
 
-    @keyframes click-effect {
-      0% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(2); opacity: 0; }
-    }
-  `
+      .replay-click {
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid red;
+        animation: click-effect 0.5s ease-out;
+        pointer-events: none;
+        z-index: 999999;
+      }
 
-  frameDoc.head.appendChild(style)
+      @keyframes click-effect {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2); opacity: 0; }
+      }
+    `
+  }, 100)
 }
 
 const applyEvents = (events: ReplayEvent[]) => {
   if (!replayFrame.value) return
-
   const frameDoc = replayFrame.value.contentDocument
   if (!frameDoc) return
 
-  // Apply the latest mouse and scroll positions from the events
   events.forEach(event => {
     switch (event.type) {
       case 'domSnapshot':
-        currentDOMSnapshot.value = event.data
+        currentSnapshot.value = event.data.html
         initializeReplayFrame(event.data.html)
         break
 
-      case 'mouseMove':
-        let cursor = frameDoc.querySelector('.replay-cursor')
-        if (!cursor) {
-          cursor = frameDoc.createElement('div')
-          cursor.className = 'replay-cursor'
-          frameDoc.body.appendChild(cursor)
+      case 'mouseMove': {
+        const cursor = frameDoc.querySelector('.replay-cursor')
+        if (cursor) {
+          cursor.style.transform = `translate(${event.data.x}px, ${event.data.y}px)`
         }
-        cursor.style.transform = `translate(${event.data.x}px, ${event.data.y}px)`
         break
+      }
 
-      case 'click':
-        const clickEffect = frameDoc.createElement('div')
-        clickEffect.className = 'replay-click'
-        clickEffect.style.left = `${event.data.x}px`
-        clickEffect.style.top = `${event.data.y}px`
-        frameDoc.body.appendChild(clickEffect)
-        setTimeout(() => clickEffect.remove(), 500)
+      case 'click': {
+        // Create click ripple effect
+        const ripple = frameDoc.createElement('div')
+        ripple.className = 'replay-click'
+        ripple.style.left = `${event.data.x}px`
+        ripple.style.top = `${event.data.y}px`
+        frameDoc.body.appendChild(ripple)
+
+        // Add temporary highlight to cursor
+        const cursor = frameDoc.querySelector('.replay-cursor')
+        if (cursor) {
+          cursor.classList.add('clicking')
+          setTimeout(() => cursor.classList.remove('clicking'), 200)
+        }
+
+        // Remove ripple after animation
+        setTimeout(() => ripple.remove(), 1000)
         break
+      }
 
       case 'scroll':
         if (frameDoc.defaultView) {
-          frameDoc.defaultView.scrollTo(event.data.scrollX, event.data.scrollY)
+          frameDoc.defaultView.scrollTo({
+            left: event.data.scrollX,
+            top: event.data.scrollY,
+            behavior: 'smooth'
+          })
         }
         break
     }
@@ -223,11 +245,10 @@ const setSpeed = (speed: number) => {
         <!-- Replay iFrame -->
         <iframe
           ref="replayFrame"
-          class="w-full h-full"
+          class="w-full h-full bg-white"
           sandbox="allow-same-origin"
           :style="{
             pointerEvents: 'none',
-            backgroundColor: 'white'
           }"
         ></iframe>
       </div>
@@ -319,5 +340,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]::-moz-range-thumb {
   @apply appearance-none w-3 h-3 bg-indigo-600 rounded-full cursor-pointer border-0;
+}
+
+.replay-cursor.clicking {
+  background: rgba(255, 0, 0, 0.8);
+  transform: translate(-50%, -50%) scale(0.8);
 }
 </style>
