@@ -1,4 +1,4 @@
-import ReplaySDK from 'replay-sdk'
+import ReplaySDK from '@vinisadev/replay-sdk'
 
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
