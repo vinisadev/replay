@@ -5,7 +5,7 @@
         <div class="flex h-16 justify-between">
           <div class="flex">
             <div class="flex flex-shrink-0 items-center">
-              <h1 class="text-xl font-bold">Replay</h1>
+              <h1 class="text-xl font-bold">Session Replay</h1>
             </div>
             <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
               <NuxtLink
@@ -25,5 +25,4 @@
       </div>
     </main>
   </div>
-  <slot />
 </template>

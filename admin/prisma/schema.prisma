@@ -14,19 +14,22 @@ datasource db {
 }
 
 model Session {
-  id String @id @default(uuid())
+  id        String   @id @default(uuid())
   websiteId String
   startedAt DateTime @default(now())
-  endedAt DateTime?
-  events Event[]
+  endedAt   DateTime?
+  events    Event[]
+
+  @@index([websiteId])
 }
 
 model Event {
-  id String @id @default(uuid())
+  id        String   @id @default(uuid())
   sessionId String
-  session Session @relation(fields: [sessionId], references: [id])
-  type String // mouseMove, click, scroll, etc.
+  type      String
+  data      Json
   timestamp DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id])
 
   @@index([sessionId])
 }

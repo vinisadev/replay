@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const prisma = event.context.prisma
   const query = getQuery(event)
-
+  
   // Parse pagination parameters
   const page = Number(query.page) || 1
   const limit = Number(query.limit) || 10
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error('Error fetching sessions: ', error)
+    console.error('Error fetching sessions:', error)
     throw createError({
       statusCode: 500,
       message: 'Failed to fetch sessions'
