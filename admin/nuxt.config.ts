@@ -8,5 +8,18 @@ export default defineNuxtConfig({
       apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api'
     }
   },
-  modules: ['@nuxtjs/tailwindcss']
+  modules: ['@nuxtjs/tailwindcss'],
+  nitro: {
+    routeRules: {
+      '/api/**': {
+        cors: true,
+        headers: {
+          'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
+          'Access-Control-Allow-Origin': '*', // For development
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Headers': '*',
+        }
+      }
+    }
+  }
 })

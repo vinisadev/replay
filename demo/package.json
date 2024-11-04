@@ -11,7 +11,9 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@nuxtjs/tailwindcss": "^6.12.2",
     "nuxt": "^3.13.2",
+    "replay-sdk": "../../replay-sdk",
     "vue": "latest",
     "vue-router": "latest"
   },
