@@ -33,7 +33,25 @@ const nextPage = () => {
 
 <template>
   <div class="space-y-6">
-    <!-- Rest of the template remains the same until the table -->
+    <!-- Header -->
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h2 class="text-xl font-semibold text-gray-900">Recorded Sessions</h2>
+        <p class="mt-2 text-sm text-gray-700">
+          A list of all recorded sessions across your websites.
+        </p>
+      </div>
+      <div class="mt-4 sm:mt-0 sm:ml-16">
+        <button
+          @click="refresh"
+          class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+        >
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
     <div class="mt-8 flow-root">
       <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
