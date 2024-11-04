@@ -2,14 +2,13 @@
 import { formatDistanceToNow, format } from 'date-fns'
 import type { ReplayEvent, PlaybackState, MousePosition, ScrollPosition } from '~/types/replay'
 
+// Get session ID from route
+const route = useRoute()
+const sessionId = route.params.id as string
 const replayFrame = ref<HTMLIFrameElement | null>(null)
 const currentSnapshot = ref<string>('')
 const currentDOMSnapshot = ref<any>(null)
 const cursor = ref<HTMLDivElement | null>(null)
-
-// Get session ID from route
-const route = useRoute()
-const sessionId = route.params.id as string
 
 // Fetch session data
 const { data, error } = await useFetch(`/api/sessions/${sessionId}`)
@@ -62,6 +61,8 @@ const togglePlayback = () => {
 }
 
 const startPlayback = () => {
+  if (!events.value.length) return
+
   const startTime = Date.now() - playbackState.currentTime
   const firstEventTime = new Date(events.value[0].timestamp).getTime()
 
@@ -93,60 +94,137 @@ const startPlayback = () => {
   requestAnimationFrame(animate)
 }
 
-// Initialize iframe content when a DOM snapshot is encountered
-const initializeReplayFrame = (html: string) => {
-  if (!replayFrame.value) return
+// Inject cursor styles and create cursor element in the iframe
+const setupReplayFrame = (frameDoc: Document) => {
+  console.log('Setting up replay frame')
+  
+  // Remove any existing style elements we've added
+  const existingStyle = frameDoc.querySelector('#replay-styles')
+  if (existingStyle) {
+    existingStyle.remove()
+  }
 
-  const frameDoc = replayFrame.value.contentDocument
-  if (!frameDoc) return
-
-  // Write the captured HTML to the iframe
-  frameDoc.open()
-  frameDoc.write(html)
-  frameDoc.close()
-
-  // Wait for iframe to load
-  setTimeout(() => {
-    if (!frameDoc) return
-
-    // Add cursor element if it doesn't exist
-    if (!frameDoc.querySelector('.replay-cursor')) {
-      const cursorEl = frameDoc.createElement('div')
-      cursorEl.className = 'replay-cursor'
-      frameDoc.body.appendChild(cursorEl)
+  // Add styles
+  const styleEl = frameDoc.createElement('style')
+  styleEl.id = 'replay-styles'
+  styleEl.textContent = `
+    .replay-cursor {
+      width: 20px;
+      height: 20px;
+      background: rgba(255, 0, 0, 0.5);
+      border: 2px solid red;
+      border-radius: 50%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 999999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease;
     }
 
-    // Add custom styles for cursor visualization
-    const style = frameDoc.createElement('style')
-    style.textContent = `
-      .replay-cursor {
-        position: fixed;
-        width: 10px;
-        height: 10px;
-        background: red;
-        border-radius: 50%;
-        pointer-events: none;
-        transition: all 0.1s ease;
-        z-index: 999999;
-      }
+    .replay-click {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border: 2px solid red;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 999998;
+      opacity: 0;
+      animation: click-ripple 0.5s ease-out forwards;
+    }
 
-      .replay-click {
-        position: fixed;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        border: 2px solid red;
-        animation: click-effect 0.5s ease-out;
-        pointer-events: none;
-        z-index: 999999;
+    @keyframes click-ripple {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.5);
       }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2);
+      }
+    }
+  `
+  frameDoc.head.appendChild(styleEl)
 
-      @keyframes click-effect {
-        0% { transform: scale(1); opacity: 1; }
-        100% { transform: scale(2); opacity: 0; }
-      }
-    `
+  // Create cursor element if it doesn't exist
+  let cursor = frameDoc.querySelector('.replay-cursor')
+  if (!cursor) {
+    cursor = frameDoc.createElement('div')
+    cursor.className = 'replay-cursor'
+    frameDoc.body.appendChild(cursor)
+    console.log('Cursor element created')
+  }
+
+  // Create a container for the content
+  let container = frameDoc.querySelector('#replay-container')
+  if (!container) {
+    container = frameDoc.createElement('div')
+    container.id = 'replay-container'
+    container.style.position = 'relative'
+    container.style.minHeight = '100vh'
+    frameDoc.body.appendChild(container)
+  }
+
+  console.log('Replay frame setup completed')
+}
+
+// Initialize iframe content when a DOM snapshot is encountered
+const initializeReplayFrame = (html: string) => {
+  if (!replayFrame.value) {
+    console.error('No replay frame reference')
+    return
+  }
+  
+  const frameDoc = replayFrame.value.contentDocument
+  if (!frameDoc) {
+    console.error('No frame document')
+    return
+  }
+
+  console.log('Initializing replay frame with HTML')
+
+  // Write the HTML to the iframe
+  frameDoc.open()
+  
+  // Wrap the content in a basic HTML structure
+  const wrappedHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin:0;padding:0;">
+        ${html}
+      </body>
+    </html>
+  `
+  
+  frameDoc.write(wrappedHtml)
+  frameDoc.close()
+
+  // Setup cursor and styles after the frame is loaded
+  frameDoc.addEventListener('DOMContentLoaded', () => {
+    setupReplayFrame(frameDoc)
+  })
+  
+  // Backup: also try to setup after a short delay
+  setTimeout(() => {
+    setupReplayFrame(frameDoc)
   }, 100)
+}
+
+const createClickEffect = (frameDoc: Document, x: number, y: number) => {
+  const ripple = frameDoc.createElement('div')
+  ripple.className = 'replay-click'
+  ripple.style.left = `${x}px`
+  ripple.style.top = `${y}px`
+  frameDoc.body.appendChild(ripple)
+
+  // Remove the ripple element after animation
+  setTimeout(() => ripple.remove(), 500)
 }
 
 const applyEvents = (events: ReplayEvent[]) => {
@@ -156,48 +234,42 @@ const applyEvents = (events: ReplayEvent[]) => {
 
   events.forEach(event => {
     switch (event.type) {
-      case 'domSnapshot':
-        currentSnapshot.value = event.data.html
+      case 'domSnapshot': {
+        console.log('Applying DOM snapshot')
         initializeReplayFrame(event.data.html)
         break
+      }
 
       case 'mouseMove': {
         const cursor = frameDoc.querySelector('.replay-cursor')
         if (cursor) {
           cursor.style.transform = `translate(${event.data.x}px, ${event.data.y}px)`
+        } else {
+          console.log('Cursor not found, attempting to recreate')
+          setupReplayFrame(frameDoc)
         }
         break
       }
 
       case 'click': {
-        // Create click ripple effect
+        console.log('Click event at', event.data.x, event.data.y)
         const ripple = frameDoc.createElement('div')
         ripple.className = 'replay-click'
         ripple.style.left = `${event.data.x}px`
         ripple.style.top = `${event.data.y}px`
         frameDoc.body.appendChild(ripple)
-
-        // Add temporary highlight to cursor
-        const cursor = frameDoc.querySelector('.replay-cursor')
-        if (cursor) {
-          cursor.classList.add('clicking')
-          setTimeout(() => cursor.classList.remove('clicking'), 200)
-        }
-
-        // Remove ripple after animation
-        setTimeout(() => ripple.remove(), 1000)
+        setTimeout(() => ripple.remove(), 500)
         break
       }
 
-      case 'scroll':
-        if (frameDoc.defaultView) {
-          frameDoc.defaultView.scrollTo({
-            left: event.data.scrollX,
-            top: event.data.scrollY,
-            behavior: 'smooth'
-          })
-        }
+      case 'scroll': {
+        frameDoc.defaultView?.scrollTo({
+          left: event.data.scrollX,
+          top: event.data.scrollY,
+          behavior: 'smooth'
+        })
         break
+      }
     }
   })
 }
